@@ -139,7 +139,7 @@ def Eck(walkers,ref): # must input walkers already in COM frame
 def MomInertia(walkers,massarray):
 	Bvalues = []
 	mois = []
-	conv = 5.84946*(10**-33)
+	conv = 1 #5.84946*(10**-34)
 	for walker in walkers:
 		walker = np.array(walker)
 		moi = np.zeros((3,3))
@@ -154,7 +154,7 @@ def MomInertia(walkers,massarray):
 						moi[2][2] += massarray[i]*(walker[i][0]**2+walker[i][1]**2)*conv
 					else:
 						moi[j][k] += -1*massarray[i]*walker[i][j]*walker[i][k]*conv
-		Bvalues.append((1.0/(moi[1][1]+moi[2][2]+moi[0][0]))/3.0)
+		Bvalues.append((1/(moi[1][1]+moi[2][2]+moi[0][0]))/3.0)
 		mois.append(moi)
 
 	return mois, Bvalues
@@ -238,6 +238,8 @@ for c in range(0,cycles):
 		print "Fourth"
 		print conwalkers[0]  #### Between the third and fourth, it is not changing
 		## re-look at COM and Eck; are they doing anything?
+		## COM calls moment of inertia
+		## think the problem is in Eck, as that is when the coordinates start to get a lot bigger
 		mois, Bvalues = np.array(MomInertia(eckwalkers,massarray))
 		conpotentials = np.array(V(conwalkers)) #+ Bvalues)
 		convref = conavg(conpotentials,trueweights,n0)
