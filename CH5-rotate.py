@@ -86,30 +86,34 @@ def conFate(walkers,trueweights):
 		trueweights[maxind] = trueweights[maxind]/2
 	return walkers,trueweights
 
-def COM(walkers): # puts walkers in a COM-shifted principal axis system
+def COM(walkers): # puts walkers in a COM-shifted [[principal axis]] system
 	COMwalkers = []
-	COMorigin = np.zeros(3)
+	
 	M = sum(massarray)
 
 	for l in xrange(len(walkers)):
 		walker = np.array(walkers[l])
-
+		COMorigin = np.zeros(3)
 		#COM shift:
 		for i in xrange(0,3):
 			for j in xrange(0,6):
 				COMorigin[i] += massarray[j]*walker[j][i]/M
 		COMshift = [COMorigin,COMorigin,COMorigin,COMorigin,COMorigin,COMorigin]
-		walker = walker + COMshift
+		if l==len(walkers)-1:
+			print "COMshift"
+			print np.array(COMshift)
+		walker = walker - COMshift
 
-		#I-matrix calculation:
-		moi, Bvalue = MomInertia([walker],massarray)
+		# #I-matrix calculation:
+		# moi, Bvalue = MomInertia([walker],massarray)
 
-		w,v = eig(moi[0])
-		princ = [v[0]/norm(v[0]),v[1]/norm(v[1]),v[2]/norm(v[2])]
-		princT = np.transpose(princ)
-		COMwalker = []
-		for i in xrange(len(walker)):
-			COMwalker.append(np.dot(walker[i],princT))
+		# w,v = eig(moi[0])
+		# princ = [v[0]/norm(v[0]),v[1]/norm(v[1]),v[2]/norm(v[2])]
+		# princT = np.transpose(princ)
+		# COMwalker = []
+		# for i in xrange(len(walker)):
+		# 	COMwalker.append(np.dot(walker[i],princT))
+		COMwalker = walker
 		COMwalkers.append(COMwalker)
 	COMwalkers = np.array(COMwalkers)
 	return COMwalkers
@@ -154,7 +158,7 @@ def MomInertia(walkers,massarray):
 						moi[2][2] += massarray[i]*(walker[i][0]**2+walker[i][1]**2)*conv
 					else:
 						moi[j][k] += -1*massarray[i]*walker[i][j]*walker[i][k]*conv
-		Bvalues.append((1/(moi[1][1]+moi[2][2]+moi[0][0]))/3.0)
+		Bvalues.append((3/(moi[1][1]+moi[2][2]+moi[0][0])))
 		mois.append(moi)
 
 	return mois, Bvalues
@@ -180,7 +184,17 @@ c2v = np.array([[0.000000000000000, 0.000000000000000, 0.3869923621587414],
 [0.000000000000000, -1.895858229423645, -0.6415748897955779],
 [0.000000000000000, 1.895858229423645, -0.6415748897955779]])
 
-c2vREF = COM([c2v])[0]
+
+#I-matrix calculation:
+moi, Bvalue = MomInertia([c2v],massarray)
+
+w,v = eig(moi[0])
+princ = [v[0]/norm(v[0]),v[1]/norm(v[1]),v[2]/norm(v[2])]
+princT = np.transpose(princ)
+COMwalker = []
+for i in xrange(len(c2v)):
+	COMwalker.append(np.dot(c2v[i],princT))
+c2vREF = COMwalker#COM([c2v])[0]
 
 whereUat = np.zeros((n0,beginning.shape[0],beginning.shape[1]))
 
@@ -223,31 +237,28 @@ for c in range(0,cycles):
 		trueweights = np.ones(len(whereUat))
 
 	if timestep >= equiltime:
-		print "First"
-		print conwalkers[0]
+		# print "First"
+		# print conwalkers[0]
 		displace = np.random.normal(0,sigma2,conwalkers.shape)
 		for i in range(0,len(displace)): 
 			displace[i,0,:] = np.random.normal(0,sigma1,(1,3))
 		conwalkers = conwalkers + displace
-		print "Second"
-		print conwalkers[0]
+		# print "Second"
+		# print conwalkers[0]
 		conwalkers = COM(conwalkers)
-		print "Third"
-		print conwalkers[0]
-		eckwalkers = Eck(conwalkers,c2vREF)
-		print "Fourth"
-		print conwalkers[0]  #### Between the third and fourth, it is not changing
-		## re-look at COM and Eck; are they doing anything?
-		## COM calls moment of inertia
-		## think the problem is in Eck, as that is when the coordinates start to get a lot bigger
-		mois, Bvalues = np.array(MomInertia(eckwalkers,massarray))
+		# print "Third"
+		# print conwalkers[0]
+		#eckwalkers = Eck(conwalkers,c2vREF)
+		# print "Fourth"
+		# print conwalkers[0]  
+		#### Okay I KNOW it is in COM now ##### !!!!!!!!!!!!!!!!!!
+		#mois, Bvalues = np.array(MomInertia(eckwalkers,massarray))
 		conpotentials = np.array(V(conwalkers)) #+ Bvalues)
 		convref = conavg(conpotentials,trueweights,n0)
 		conpvalues = pcalc(conpotentials, convref, dtau)
 		trueweights = trueweights * conpvalues
-		minind = np.argmin(trueweights)
 		conwalkers,trueweights = conFate(conwalkers,trueweights)
-		if timestep == equiltime+5:
+		if timestep == equiltime+1:
 			assert 1==0
 		print timestep
 
