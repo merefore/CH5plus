@@ -15,7 +15,7 @@ mox = 1
 
 START = timeit.default_timer()
 
-n0 = 50 #number of initial walkers
+n0 = 20000 #number of initial walkers
 dtau = 10 #time step
 m1 = 21874.658
 m2 = 1837.152
@@ -23,7 +23,8 @@ massarray = [m1,m2,m2,m2,m2,m2]
 sigma1 = np.sqrt(dtau / m1)
 sigma2 = np.sqrt(dtau / m2)
 alpha = 0.5 / dtau
-cycles = 100
+cycles = 10000
+timestep = 0
 
 
 def V(whereUat): #-----------our potential function
@@ -156,8 +157,8 @@ def MomInertia(walkers,massarray):
 					else:
 						moi[j][k] += -1*massarray[i]*walker[i][j]*walker[i][k]*conv
 		Bvalue = 3/(moi[1][1]+moi[2][2]+moi[0][0]) #(1/moi[1][1]+1/moi[2][2]+1/moi[0][0])/3
-		if timestep>90:
-			print Bvalue*220000
+		# if timestep>90:
+		# 	print Bvalue*220000
 		Bvalues.append(Bvalue)
 
 		mois.append(moi)
@@ -210,61 +211,48 @@ for i in range(0,n0):
 #######                                          #########
 if mox == 1:
 	#fileEnergy = open("5deut_energies.txt", "a+")
-	fileXYZ = open("CH5firstrot2.xyz", "a+")
-timestep = 0
+	fileXYZ = open("CH5firstrot3.xyz", "a+")
 energies = []
 population = []
 ancestorPile = []
 
 
-equiltime = 50
+equiltime = 4000
 for c in range(0,cycles):    
 
-	# if timestep%500 == 0:
-	# 	ancestors = whereUat
-	# 	whereUfrom = np.arange(0,len(whereUat)) #initialize the "index array", which will reference indexes in "ancestors"
+	if timestep%500 == 0:
+		ancestors = whereUat
+		whereUfrom = np.arange(0,len(whereUat)) #initialize the "index array", which will reference indexes in "ancestors"
 		
-	# # (Remember the mass!)
-	# displace = np.random.normal(0,sigma2,whereUat.shape)
-	# for i in range(0,len(displace)): 
-	# 	displace[i,0,:] = np.random.normal(0,sigma1,(1,3))
-	# whereUat = whereUat + displace
-	# potentials = V(whereUat)  #using my function V
-	# vref = avg(potentials, n0) #umf avg
-	# pvalues = pcalc(potentials, vref, dtau) #umf pcalc
+	if timestep < equiltime:
+		displace = np.random.normal(0,sigma2,whereUat.shape)
+		for i in range(0,len(displace)): 
+			displace[i,0,:] = np.random.normal(0,sigma1,(1,3))
+		whereUat = whereUat + displace 
+		potentials = V(whereUat)  #using my function V
+		vref = avg(potentials, n0) #umf avg
+		pvalues = pcalc(potentials, vref, dtau) #umf pcalc
+		whereUat,potentials,whereUfrom = Fate(whereUat,whereUfrom,potentials,pvalues)
 
 	if timestep == equiltime:
 		conwalkers = whereUat
 		trueweights = np.ones(len(whereUat))
 
 	if timestep >= equiltime:
-		# print "First"
-		# print conwalkers[0]
 		displace = np.random.normal(0,sigma2,conwalkers.shape)
 		for i in range(0,len(displace)): 
 			displace[i,0,:] = np.random.normal(0,sigma1,(1,3))
 		conwalkers = conwalkers + displace
-		# print "Second"
-		# print conwalkers[0]
 		conwalkers = COM(conwalkers)
-		# print "Third"
-		# print conwalkers[0]
-		eckwalkers = Eck(conwalkers,c2vREF)
-		# print "Fourth"
-		# print conwalkers[0]  
-		mois, Bvalues = np.array(MomInertia(eckwalkers,massarray))
+		conwalkers = Eck(conwalkers,c2vREF)
+		mois, Bvalues = np.array(MomInertia(conwalkers,massarray))
 		conpotentials = np.array(V(conwalkers)) #+ Bvalues)
 		convref = conavg(conpotentials,trueweights,n0)
+		energies.append(convref)
 		conpvalues = pcalc(conpotentials, convref, dtau)
 		trueweights = trueweights * conpvalues
 		conwalkers,trueweights = conFate(conwalkers,trueweights)
-		print timestep
-
-	# whereUat,potentials,whereUfrom = Fate(whereUat,whereUfrom,potentials,pvalues) #umf Fate
 	
-	# if timestep%500 == 0:
-	# 	print vref, ", ", timestep, ", ", len(whereUat)
-
 	# Descendant Weighting #	
 	# if timestep%500 == 50 and timestep > 4000:
 	# 	for i in whereUfrom:
