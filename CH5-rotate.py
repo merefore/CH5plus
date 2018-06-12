@@ -79,10 +79,10 @@ def conFate(walkers,trueweights):
 	minind = np.argmin(trueweights)
 	maxind = np.argmax(trueweights)
 	if trueweights[minind] <= 1.0/len(walkers):
-		walkers = np.delete(walkers,minind,axis=0)
-		trueweights = np.delete(trueweights,minind)
 		walkers = np.concatenate((walkers,np.array([walkers[maxind]])),axis=0)
+		walkers = np.delete(walkers,minind,axis=0)
 		trueweights = np.append(trueweights,trueweights[maxind]/2)
+		trueweights = np.delete(trueweights,minind)
 		trueweights[maxind] = trueweights[maxind]/2
 	return walkers,trueweights
 
@@ -99,9 +99,6 @@ def COM(walkers): # puts walkers in a COM-shifted [[principal axis]] system
 			for j in xrange(0,6):
 				COMorigin[i] += massarray[j]*walker[j][i]/M
 		COMshift = [COMorigin,COMorigin,COMorigin,COMorigin,COMorigin,COMorigin]
-		if l==len(walkers)-1:
-			print "COMshift"
-			print np.array(COMshift)
 		walker = walker - COMshift
 
 		# #I-matrix calculation:
@@ -158,7 +155,11 @@ def MomInertia(walkers,massarray):
 						moi[2][2] += massarray[i]*(walker[i][0]**2+walker[i][1]**2)*conv
 					else:
 						moi[j][k] += -1*massarray[i]*walker[i][j]*walker[i][k]*conv
-		Bvalues.append((3/(moi[1][1]+moi[2][2]+moi[0][0])))
+		Bvalue = 3/(moi[1][1]+moi[2][2]+moi[0][0]) #(1/moi[1][1]+1/moi[2][2]+1/moi[0][0])/3
+		if timestep>90:
+			print Bvalue*220000
+		Bvalues.append(Bvalue)
+
 		mois.append(moi)
 
 	return mois, Bvalues
@@ -209,7 +210,7 @@ for i in range(0,n0):
 #######                                          #########
 if mox == 1:
 	#fileEnergy = open("5deut_energies.txt", "a+")
-	fileXYZ = open("CH5firstrot.xyz", "a+")
+	fileXYZ = open("CH5firstrot2.xyz", "a+")
 timestep = 0
 energies = []
 population = []
@@ -248,18 +249,15 @@ for c in range(0,cycles):
 		conwalkers = COM(conwalkers)
 		# print "Third"
 		# print conwalkers[0]
-		#eckwalkers = Eck(conwalkers,c2vREF)
+		eckwalkers = Eck(conwalkers,c2vREF)
 		# print "Fourth"
 		# print conwalkers[0]  
-		#### Okay I KNOW it is in COM now ##### !!!!!!!!!!!!!!!!!!
-		#mois, Bvalues = np.array(MomInertia(eckwalkers,massarray))
+		mois, Bvalues = np.array(MomInertia(eckwalkers,massarray))
 		conpotentials = np.array(V(conwalkers)) #+ Bvalues)
 		convref = conavg(conpotentials,trueweights,n0)
 		conpvalues = pcalc(conpotentials, convref, dtau)
 		trueweights = trueweights * conpvalues
 		conwalkers,trueweights = conFate(conwalkers,trueweights)
-		if timestep == equiltime+1:
-			assert 1==0
 		print timestep
 
 	# whereUat,potentials,whereUfrom = Fate(whereUat,whereUfrom,potentials,pvalues) #umf Fate
@@ -277,11 +275,11 @@ for c in range(0,cycles):
 convert = 0.52917725
 v = np.zeros(len(conwalkers))
 v = CH5pot.mycalcpot(conwalkers,len(conwalkers))
-
+b=0
 for item in conwalkers: # for jmol xyz file
 	if mox == 1:	
 		fileXYZ.write("6\n")
-		fileXYZ.write("CH5+ coordinates         %f         %f" % (v[b],Bvalues[b]))
+		fileXYZ.write("weight/potential/Bvalue 		%f         %f         %f" % (trueweights[b],v[b],Bvalues[b]))
 		fileXYZ.write("%i\n" % b)
 		fileXYZ.write("C       %f       %f       %f\n" % (item[0,0]*convert, item[0,1]*convert, item[0,2]*convert))
 		fileXYZ.write("H       %f       %f       %f\n" % (item[1,0]*convert, item[1,1]*convert, item[1,2]*convert))
