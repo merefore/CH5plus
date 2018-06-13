@@ -121,6 +121,7 @@ def Eck(walkers,ref): # must input walkers already in COM frame
 	Fdot = np.zeros((3,3))
 	newwalkers = np.zeros((len(walkers),6,3))
 	for l in xrange(len(walkers)):
+		x=0
 		walker = np.array(walkers[l])
 		for i in xrange(0,3):
 			for j in xrange(0,6):
@@ -129,10 +130,14 @@ def Eck(walkers,ref): # must input walkers already in COM frame
 			for m in xrange(0,3):
 				Fdot[k,m] = np.dot(Fvec[k],Fvec[m])
 		if np.linalg.det(Fdot)==0:
+			print "singular matrix!"
+			x=1
 			Fdotinv = np.linalg.inv(Fdot+perturb)
 		else:
 			Fdotinv = np.linalg.inv(Fdot)
 		Fminushalf = scipy.linalg.sqrtm(Fdotinv)
+		if x==1:
+			print "perturb success!"
 		Eckaxes = np.dot(Fvec,Fminushalf)
 		for j in xrange(0,6):
 			newwalkers[l][j] = np.dot(walker[j],np.transpose(Eckaxes))
