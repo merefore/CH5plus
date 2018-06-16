@@ -137,9 +137,9 @@ def Eck(walkers,ref): # must input walkers already in COM frame
 		sqrtw = 1.0/np.sqrt(np.abs(w))
 		Fsqrtdiag = np.diag(sqrtw)
 		Fminushalf = np.dot(v,np.dot(Fsqrtdiag,vT))
-		Eckaxes = np.dot(Fvec,Fminushalf)
+		Eckaxes = np.dot(Fvec.transpose(),Fminushalf)
 		for j in xrange(0,6):
-			newwalkers[l][j] = np.dot(walker[j],np.transpose(Eckaxes))
+			newwalkers[l][j] = np.dot(walker[j],Eckaxes)
 	return newwalkers
 
 def MomInertia(walkers,massarray):
