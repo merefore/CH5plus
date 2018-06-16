@@ -15,7 +15,7 @@ mox = 1
 
 START = timeit.default_timer()
 
-n0 = 20000 #number of initial walkers
+n0 = 2000 #number of initial walkers
 dtau = 10 #time step
 m1 = 21874.658
 m2 = 1837.152
@@ -23,7 +23,8 @@ massarray = [m1,m2,m2,m2,m2,m2]
 sigma1 = np.sqrt(dtau / m1)
 sigma2 = np.sqrt(dtau / m2)
 alpha = 0.5 / dtau
-cycles = 10000
+cycles = 1000
+equiltime = 500
 timestep = 0
 
 
@@ -46,6 +47,8 @@ def conavg(potentials,trueweights,init):
 	
 def pcalc(potentials, vref, dtau): #------------to calculate pvalues
 	a = -(potentials - vref) * dtau
+	print "a"
+	print a, "\n\n"
 	pvalues = np.exp(a.astype(float))
 	return pvalues
 	
@@ -125,19 +128,15 @@ def Eck(walkers,ref): # must input walkers already in COM frame
 		walker = np.array(walkers[l])
 		for i in xrange(0,3):
 			for j in xrange(0,6):
-				Fvec[i] += massarray[j]*ref[j][i]*walker[j]
+				Fvec[i] += massarray[j]*ref[j][i]*walker[j] # 1x3 array
 		for k in xrange(0,3):
 			for m in xrange(0,3):
 				Fdot[k,m] = np.dot(Fvec[k],Fvec[m])
-		if np.linalg.det(Fdot)==0:
-			print "singular matrix!"
-			x=1
-			Fdotinv = np.linalg.inv(Fdot+perturb)
-		else:
-			Fdotinv = np.linalg.inv(Fdot)
-		Fminushalf = scipy.linalg.sqrtm(Fdotinv)
-		if x==1:
-			print "perturb success!"
+		w,v = np.linalg.eigh(Fdot)
+		vT = v.transpose()
+		sqrtw = 1.0/np.sqrt(np.abs(w))
+		Fsqrtdiag = np.diag(sqrtw)
+		Fminushalf = np.dot(v,np.dot(Fsqrtdiag,vT))
 		Eckaxes = np.dot(Fvec,Fminushalf)
 		for j in xrange(0,6):
 			newwalkers[l][j] = np.dot(walker[j],np.transpose(Eckaxes))
@@ -161,7 +160,7 @@ def MomInertia(walkers,massarray):
 						moi[2][2] += massarray[i]*(walker[i][0]**2+walker[i][1]**2)*conv
 					else:
 						moi[j][k] += -1*massarray[i]*walker[i][j]*walker[i][k]*conv
-		Bvalue = 3/(moi[1][1]+moi[2][2]+moi[0][0]) #(1/moi[1][1]+1/moi[2][2]+1/moi[0][0])/3
+		Bvalue = 0.5/(3*(moi[1][1]+moi[2][2]+moi[0][0])) #(1/moi[1][1]+1/moi[2][2]+1/moi[0][0])/3
 		# if timestep>90:
 		# 	print Bvalue*220000
 		Bvalues.append(Bvalue)
@@ -177,12 +176,21 @@ perturb[2][2] = 1
 
 
 #Initialize Walkers
-beginning = np.array([[0.000000000000000, 0.000000000000000, 0.3869923621587414],
-[0.000000000000000, 0.000000000000000, -1.810066283748844],
-[1.797239666982623, 0.000000000000000,   1.381637275550612],
-[-1.797239666982623, 0.000000000000000, 1.381637275550612],
-[0.000000000000000, -1.895858229423645, -0.6415748897955779],
-[0.000000000000000, 1.895858229423645, -0.6415748897955779]])
+# C2v
+# beginning = np.array([[0.000000000000000, 0.000000000000000, 0.3869923621587414],
+# [0.000000000000000, 0.000000000000000, -1.810066283748844],
+# [1.797239666982623, 0.000000000000000,   1.381637275550612],
+# [-1.797239666982623, 0.000000000000000, 1.381637275550612],
+# [0.000000000000000, -1.895858229423645, -0.6415748897955779],
+# [0.000000000000000, 1.895858229423645, -0.6415748897955779]])
+
+# Min energy
+beginning = np.array([[0.000000000000000, 0.000000000000000, 0.000000000000000],
+[0.1318851447521099, 2.088940054609643, 0.000000000000000],
+[1.786540362044548, -1.386051328559878, 0.000000000000000],
+[2.233806981137821, 0.3567096955165336, 0.000000000000000],
+[-0.8247121421923925, -0.6295306113384560, -1.775332267901544],
+[-0.8247121421923925, -0.6295306113384560, 1.775332267901544]])
 
 c2v = np.array([[0.000000000000000, 0.000000000000000, 0.3869923621587414],
 [0.000000000000000, 0.000000000000000, -1.810066283748844],
@@ -216,13 +224,11 @@ for i in range(0,n0):
 #######                                          #########
 if mox == 1:
 	#fileEnergy = open("5deut_energies.txt", "a+")
-	fileXYZ = open("CH5firstrot3.xyz", "a+")
+	fileXYZ = open("CH5firstrot170615.xyz", "a+")
 energies = []
 population = []
 ancestorPile = []
 
-
-equiltime = 4000
 for c in range(0,cycles):    
 
 	if timestep%500 == 0:
@@ -249,7 +255,9 @@ for c in range(0,cycles):
 			displace[i,0,:] = np.random.normal(0,sigma1,(1,3))
 		conwalkers = conwalkers + displace
 		conwalkers = COM(conwalkers)
+		print conwalkers[0]
 		conwalkers = Eck(conwalkers,c2vREF)
+		print "\n\n", conwalkers[0]
 		mois, Bvalues = np.array(MomInertia(conwalkers,massarray))
 		conpotentials = np.array(V(conwalkers)) #+ Bvalues)
 		convref = conavg(conpotentials,trueweights,n0)
@@ -283,7 +291,7 @@ for item in conwalkers: # for jmol xyz file
 		b+=1
 	else:
 		print "6\n"
-		print "CH5+ coordinates         %f         %f" % (v[b],Bvalues[b])
+		print "weight/potential/Bvalue 		%f         %f         %f" % (trueweights[b],v[b],Bvalues[b])
 		print "%i\n" % b
 		print "C       %f       %f       %f\n" % (item[0,0]*convert, item[0,1]*convert, item[0,2]*convert)
 		print "H       %f       %f       %f\n" % (item[1,0]*convert, item[1,1]*convert, item[1,2]*convert)
